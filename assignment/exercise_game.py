@@ -1,52 +1,48 @@
-"""
-Response time - single-threaded
-"""
-
+import requests
+import json
 from machine import Pin
 import time
 import random
-import json
-
-
 
 N: int = 10
 sample_ms = 10.0
 on_ms = 500
 
+firebase_url = "https://firestore.googleapis.com/v1/projects/mini-f8aad/databases/(default)/documents/response_times"
+
+def upload_to_firebase(data: dict, id_token: str = None) -> None:
+    headers = {
+        "Content-Type": "application/json",
+    }
+    if id_token:
+        headers["Authorization"] = f"Bearer {id_token}"
+    
+    json_data = json.dumps(data)
+    
+    firestore_data = {
+        "GameTimesJson": json_data  
+    }
+    
+    response = requests.post(firebase_url, data=json.dumps(firestore_data), headers=headers)
+    print(response.text)
 
 def random_time_interval(tmin: float, tmax: float) -> float:
     """return a random time interval between max and min"""
     return random.uniform(tmin, tmax)
 
-
 def blinker(N: int, led: Pin) -> None:
-    # %% let user know game started / is over
-
     for _ in range(N):
         led.high()
         time.sleep(0.1)
         led.low()
         time.sleep(0.1)
 
-
 def write_json(json_filename: str, data: dict) -> None:
-    """Writes data to a JSON file.
-
-    Parameters
-    ----------
-
-    json_filename: str
-        The name of the file to write to. This will overwrite any existing file.
-
-    data: dict
-        Dictionary data to write to the file.
-    """
-
+    """Writes data to a JSON file."""
     with open(json_filename, "w") as f:
         json.dump(data, f)
 
-
-def scorer(t: list[int | None]) -> None:
+def scorer(t: list[int | None]) -> dict:
     misses = t.count(None)
 
     # Print the statement with the formatted average
@@ -60,26 +56,18 @@ def scorer(t: list[int | None]) -> None:
     print(f"You missed the light {misses} / {len(t)} times, avg: {average:.2f}, min: {min(t_good)}, max: {max(t_good)}")
     print(t_good)
 
-    # add key, value to this dict to store the minimum, maximum, average response time
-    # and score (non-misses / total flashes) i.e. the score a floating point number
-    # is in range [0..1]
-    data = {}
+    # Prepare the data to upload to Firebase
+    data = {
+        "misses": misses,
+        "average": average,
+        "min": min(t_good) if t_good else None,
+        "max": max(t_good) if t_good else None,
+        "score": (len(t_good) / len(t)) if len(t) > 0 else 0,
+    }
 
-    # %% make dynamic filename and write JSON
-
-    now: tuple[int] = time.localtime()
-
-    now_str = "-".join(map(str, now[:3])) + "T" + "_".join(map(str, now[3:6]))
-    filename = f"score-{now_str}.json"
-
-    print("write", filename)
-
-    write_json(filename, data)
-
+    return data
 
 if __name__ == "__main__":
-    # using "if __name__" allows us to reuse functions in other script files
-
     led = Pin(0, Pin.OUT)
     button = Pin(15, Pin.IN, Pin.PULL_UP)
 
@@ -103,9 +91,8 @@ if __name__ == "__main__":
 
         led.low()
 
-
     blinker(5, led)
 
-    scorer(t)
+    scores = scorer(t)
 
-    
+    upload_to_firebase(scores)

@@ -8,7 +8,8 @@ import random
 import json
 
 
-N: int = 3
+
+N: int = 10
 sample_ms = 10.0
 on_ms = 500
 
@@ -46,12 +47,17 @@ def write_json(json_filename: str, data: dict) -> None:
 
 
 def scorer(t: list[int | None]) -> None:
-    # %% collate results
     misses = t.count(None)
-    print(f"You missed the light {misses} / {len(t)} times")
 
+    # Print the statement with the formatted average
     t_good = [x for x in t if x is not None]
 
+    if len(t_good) == 0:
+        average = 0
+    else:
+        average = sum(t_good) / len(t_good)
+
+    print(f"You missed the light {misses} / {len(t)} times, avg: {average:.2f}, min: {min(t_good)}, max: {max(t_good)}")
     print(t_good)
 
     # add key, value to this dict to store the minimum, maximum, average response time
@@ -74,8 +80,8 @@ def scorer(t: list[int | None]) -> None:
 if __name__ == "__main__":
     # using "if __name__" allows us to reuse functions in other script files
 
-    led = Pin("LED", Pin.OUT)
-    button = Pin(16, Pin.IN, Pin.PULL_UP)
+    led = Pin(0, Pin.OUT)
+    button = Pin(15, Pin.IN, Pin.PULL_UP)
 
     t: list[int | None] = []
 
@@ -97,6 +103,9 @@ if __name__ == "__main__":
 
         led.low()
 
+
     blinker(5, led)
 
     scorer(t)
+
+    

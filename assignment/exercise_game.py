@@ -10,7 +10,7 @@ on_ms = 500
 
 firebase_url = "https://firestore.googleapis.com/v1/projects/mini-f8aad/databases/(default)/documents/response_times"
 
-def upload_to_firebase(data: dict, id_token: str = None) -> None:
+def upload_to_firebase(data: dict, id_token: str = '') -> None:
     headers = {
         "Content-Type": "application/json",
     }

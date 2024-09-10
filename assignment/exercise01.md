@@ -24,6 +24,11 @@ Experiment using exercise_light.py to find approximate max_bright and min_bright
 
 1. what are the "max_bright" and "min_bright" values you found?
 
+
+We first tested this with the default values of ```max_bright``` and ```min_bright```, and we found that our LED was broken, so we changed the default LED pin to GPIO0 to use that LED instead. 
+* For ```max_bright``` (min daylight) we found that 50000 was appropriate for our setting, which resulted in the onboard LED turning on.
+* For ```min_bright``` (max daylight) we found that 800 was appropriate for our setting, which resulted in the onboard LED turning off.
+
 ## Notes
 
 Pico MicroPython time.sleep() doesn't error for negative values even though such are obviously incorrect--it is undefined for a system to sleep for negative time.

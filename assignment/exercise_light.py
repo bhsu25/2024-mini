@@ -9,13 +9,13 @@ import machine
 # GP28 is ADC2
 ADC2 = 28
 
-led = machine.Pin("LED", machine.Pin.OUT)
+led = machine.Pin(0, machine.Pin.OUT)
 adc = machine.ADC(ADC2)
 
 blink_period = 0.1
 
 max_bright = 50000
-min_bright = 10000
+min_bright = 800
 
 
 def clip(value: float) -> float:

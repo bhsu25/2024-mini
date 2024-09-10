@@ -19,3 +19,6 @@ For the question below, feel free to use musical scale of your choice!
 ## Questions
 
 1. Using the code in exercise_sound.py as a starting point, modify the code to play several notes in a sequence from a song of your choosing.
+
+We added code to play mario theme song. Code was grabbed from website linked at
+the top

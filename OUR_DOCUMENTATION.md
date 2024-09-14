@@ -14,6 +14,10 @@ and receive data from.
 The referenced data that is being transferred is the .json file of the player's
 score from the button press game. We used the 'network' python module to
 establish a WLAN connection so the Pico can access the internet. We use the
-'requests' HTTP module to make POST requests to the Firebase realtime database.
+'requests' HTTP module to make POST and GET requests to the Firebase realtime database.
 
-When a player completes a game,
+When a player completes a game, the score as well as the signed in user email is
+posted to the database. This score can be accessed with our authentication
+script.
+
+This authentication python script . . .

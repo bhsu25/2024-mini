@@ -11,6 +11,7 @@ import network
 
 url = "https://mini-f8aad-default-rtdb.firebaseio.com/"
 
+SSID = "BU Guest (unencrypted)"
 
 def connect_wifi(ssid):
     wlan = network.WLAN(network.STA_IF)
@@ -119,9 +120,9 @@ def scorer(t: list[int | None]) -> None:
 #if __name__ == "__main__":
     # using "if __name__" allows us to reuse functions in other script files
 
-connect_wifi(SSID, password)
+connect_wifi(SSID)
 led = Pin("LED", Pin.OUT)
-button = Pin(12, Pin.IN, Pin.PULL_UP)
+button = Pin(15, Pin.IN, Pin.PULL_UP)
 
 t: list[int | None] = []
 

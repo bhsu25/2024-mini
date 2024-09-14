@@ -1,108 +1,149 @@
-import requests
-import json
-import firebase_admin
-from firebase_admin import auth, credentials
+"""
+Response time - single-threaded
+"""
+
 from machine import Pin
 import time
 import random
+import json
+import requests
+import network
 
-# Initialize the Firebase app with your credentials
-cred = credentials.Certificate("/Users/dev/Desktop/mini-f8aad-firebase-adminsdk-r6nm9-167cb44e80.json")
-firebase_admin.initialize_app(cred)
+url = "https://mini-f8aad-default-rtdb.firebaseio.com/"
 
-N = 10
+
+def connect_wifi(ssid):
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(True)
+    wlan.connect(ssid)
+    
+    max_wait = 10
+    while max_wait > 0:
+        if wlan.status() < 0 or wlan.status() >= 3:
+            break
+        max_wait -= 1
+        print('Waiting for connection...')
+        time.sleep(1)
+        
+    if wlan.status() == 3:
+        print('Connected successfully!')
+        status = wlan.ifconfig()
+        print(f'IP address: {status[0]}')
+        return True
+    else:
+        print('Failed to connect to Wi-Fi')
+        return False
+
+N: int = 10
 sample_ms = 10.0
 on_ms = 500
 
-firebase_url_template = "https://firestore.googleapis.com/v1/projects/mini-f8aad/databases/(default)/documents/users/{user_id}/data/response_times"
 
 def random_time_interval(tmin: float, tmax: float) -> float:
+    """return a random time interval between max and min"""
     return random.uniform(tmin, tmax)
 
+
 def blinker(N: int, led: Pin) -> None:
+    # %% let user know game started / is over
+
     for _ in range(N):
         led.high()
         time.sleep(0.1)
         led.low()
         time.sleep(0.1)
 
-def scorer(t: list[int | None]) -> dict:
-    misses = t.count(None)
-    t_good = [x for x in t if x is not None]
-    average = sum(t_good) / len(t_good) if t_good else 0
 
-    print(f"You missed the light {misses} / {len(t)} times, avg: {average:.2f}, min: {min(t_good)}, max: {max(t_good)}")
+def write_json(json_filename: str, data: dict) -> None:
+    """Writes data to a JSON file.
+
+    Parameters
+    ----------
+
+    json_filename: str
+        The name of the file to write to. This will overwrite any existing file.
+
+    data: dict
+        Dictionary data to write to the file.
+    """
+
+    with open(json_filename, "w") as f:
+        json.dump(data, f)
+
+
+def scorer(t: list[int | None]) -> None:
+    # %% collate results
+    misses = t.count(None)
+    print(f"You missed the light {misses} / {len(t)} times")
+
+    t_good = [x for x in t if x is not None]
+
     print(t_good)
 
-    return {
-        "misses": misses,
-        "average": average,
-        "min": min(t_good) if t_good else None,
-        "max": max(t_good) if t_good else None,
-        "score": (len(t_good) / len(t)) if len(t) > 0 else 0,
-    }
-
-def upload_to_firebase(data: dict, id_token: str, user_id: str) -> None:
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {id_token}"  # Secure the request with the user's idToken
-    }
-
-    firebase_url = firebase_url_template.format(user_id=user_id)
-    firestore_data = {
-        "fields": {
-            "GameTimesJson": {"stringValue": json.dumps(data)}
-        }
-    }
+    # add key, value to this dict to store the minimum, maximum, average response time
+    # and score (non-misses / total flashes) i.e. the score a floating point number
+    # is in range [0..1]
     
-    response = requests.post(firebase_url, data=json.dumps(firestore_data), headers=headers)
-    if response.status_code == 200:
-        print("Data successfully uploaded.")
+    if t_good:
+        avg_time = sum(t_good)/len(t_good)
+        min_time = min(t_good)
+        max_time = max(t_good)
     else:
-        print(f"Failed to upload data: {response.text}")
+        avg_time = min_time = max_time = None
+        
+    
+    print(f"Response Times: {t_good}")
+    print(f"Avg: {avg_time}, min: {min_time}, max: {max_time}")
+        
+    data = {
+        "average_time" : avg_time,
+        "min_time" : min_time,
+        "max_time" : max_time,
+        "misses" : misses,
+        "score" : (N - misses) / N 
+        }
 
-def authenticate_user(email: str):
-    ALLOWED_EMAILS = ["trieut415@gmail.com", "bhsu25@bu.edu"]
+    # %% make dynamic filename and write JSON
 
-    if email not in ALLOWED_EMAILS:
-        raise ValueError("This email is not allowed to sign in.")
+    now: tuple[int] = time.localtime()
 
-    user = auth.get_user_by_email(email)
-    id_token = auth.create_custom_token(user.uid)
-    return id_token, user.uid
+    now_str = "-".join(map(str, now[:3])) + "T" + "_".join(map(str, now[3:6]))
+    filename = f"score-{now_str}.json"
 
-if __name__ == "__main__":
-    try:
-        email = 'trieut415@gmail.com'
-        id_token, user_id = authenticate_user(email)
-    except ValueError as e:
-        print(e)
-        exit(1)
+    print("write", filename)
 
-    led = Pin(0, Pin.OUT)
-    button = Pin(15, Pin.IN, Pin.PULL_UP)
+    
+    response = requests.post(url + f"{filename}", data = json.dumps(data))
+    print(response.text)
 
-    t: list[int | None] = []
+#if __name__ == "__main__":
+    # using "if __name__" allows us to reuse functions in other script files
 
-    blinker(3, led)
+connect_wifi(SSID, password)
+led = Pin("LED", Pin.OUT)
+button = Pin(12, Pin.IN, Pin.PULL_UP)
 
-    for i in range(N):
-        time.sleep(random_time_interval(0.5, 5.0))
+t: list[int | None] = []
 
-        led.high()
+blinker(3, led)
 
-        tic = time.ticks_ms()
-        t0 = None
-        while time.ticks_diff(time.ticks_ms(), tic) < on_ms:
-            if button.value() == 0:
-                t0 = time.ticks_diff(time.ticks_ms(), tic)
-                led.low()
-                break
-        t.append(t0)
 
-        led.low()
+for i in range(N):
+    time.sleep(random_time_interval(0.5, 5.0))
 
-    blinker(5, led)
+    led.high()
 
-    scores = scorer(t)
-    upload_to_firebase(scores, id_token, user_id)
+    tic = time.ticks_ms()
+    t0 = None
+    while time.ticks_diff(time.ticks_ms(), tic) < on_ms:
+        if button.value() == 0:
+            t0 = time.ticks_diff(time.ticks_ms(), tic)
+            led.low()
+            break
+    t.append(t0)
+
+    led.low()
+
+blinker(5, led)
+
+scorer(t)

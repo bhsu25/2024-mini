@@ -16,3 +16,4 @@ score from the button press game. We used the 'network' python module to
 establish a WLAN connection so the Pico can access the internet. We use the
 'requests' HTTP module to make POST requests to the Firebase realtime database.
 
+When a player completes a game,

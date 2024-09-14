@@ -12,6 +12,18 @@ import network
 url = "https://mini-f8aad-default-rtdb.firebaseio.com/"
 SSID = "BU Guest (unencrypted)"
 
+def get_file_from_firebase(filename: str):
+    response = requests.get(url + f"{filename}.json")
+    
+    if response.status_code == 200:
+        data = response.json()
+        print(f"Successfully retrieved data: {data}")
+        return data
+    else:
+        print(f"Failed to retrieve data. Status code: {response.status_code}")
+        return None
+
+
 def connect_to_wifi(ssid):
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
@@ -64,6 +76,7 @@ def write_json(json_filename: str, data: dict) -> None:
 
 def scorer(response_times: list[int | None]) -> None:
     """Calculate and print the score and statistics from response times."""
+    currentemail = get_file_from_firebase("email")
     missed_responses = response_times.count(None)
     print(f"You missed the light {missed_responses} / {len(response_times)} times")
 
@@ -84,7 +97,8 @@ def scorer(response_times: list[int | None]) -> None:
         "min_response_time": min_response_time,
         "max_response_time": max_response_time,
         "missed_responses": missed_responses,
-        "success_rate": (total_flashes - missed_responses) / total_flashes
+        "success_rate": (total_flashes - missed_responses) / total_flashes,
+        "email": currentemail
     }
 
     now = time.localtime()
@@ -95,6 +109,7 @@ def scorer(response_times: list[int | None]) -> None:
 
     response = requests.post(url + f"{filename}", data=json.dumps(metrics))
     print(response.text)
+    
 
 # Connect to Wi-Fi
 connect_to_wifi(SSID)

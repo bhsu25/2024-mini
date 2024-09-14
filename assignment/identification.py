@@ -13,7 +13,7 @@ firebase_admin.initialize_app(cred, {
 CLIENT_SECRETS_FILE_TRIEU = "/Users/dev/Desktop/trieu.json"
 CLIENT_SECRETS_FILE_BEN = "/Users/dev/Desktop/ben.json"
 
-ALLOWED_USERS = ['trieut415@gmail.com', 'bhsu25@bu.edu']
+ALLOWED_USERS = ['trieut415@gmail.com', 'trieut@bu.edu']
 
 SCOPES = [
     'openid',
@@ -58,15 +58,6 @@ def get_user_data(user_email):
     else:
         print(f"No data found for {user_email}")
 
-def print_all_data():
-    ref = db.reference('/')
-    all_data = ref.get()
-    if all_data:
-        print("All data in Realtime Database:")
-        print(all_data)
-    else:
-        print("The Realtime Database is empty.")
-
 def upload_email_to_db(user_email):
     ref = db.reference('email')    
     ref.set(user_email)
@@ -97,7 +88,6 @@ def main():
     creds_trieu = get_user_credentials(CLIENT_SECRETS_FILE_TRIEU)
     trieu_email = verify_user_token(creds_trieu)
     get_user_data(trieu_email)
-    print_all_data()
     upload_email_to_db(trieu_email)
     parse_and_display_scores(trieu_email)
 

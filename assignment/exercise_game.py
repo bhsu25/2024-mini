@@ -10,50 +10,42 @@ import requests
 import network
 
 url = "https://mini-f8aad-default-rtdb.firebaseio.com/"
-
 SSID = "BU Guest (unencrypted)"
 
-def connect_wifi(ssid):
+def connect_to_wifi(ssid):
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
     wlan.connect(ssid)
     
-    max_wait = 10
-    while max_wait > 0:
+    buffer_time = 10
+    while buffer_time > 0:
         if wlan.status() < 0 or wlan.status() >= 3:
             break
-        max_wait -= 1
-        print('Waiting for connection...')
+        buffer_time -= 1
+        print('Connecting...')
         time.sleep(1)
         
     if wlan.status() == 3:
-        print('Connected successfully!')
-        status = wlan.ifconfig()
-        print(f'IP address: {status[0]}')
+        print('Connected...')
         return True
     else:
-        print('Failed to connect to Wi-Fi')
+        print('Not connected to Wi-Fi.')
         return False
 
-N: int = 10
-sample_ms = 10.0
-on_ms = 500
+total_flashes: int = 10
+flash_duration_ms = 500
 
+def random_time_interval(min_time: float, max_time: float) -> float:
+    """Returns a random time interval between max_time and min_time"""
+    return random.uniform(min_time, max_time)
 
-def random_time_interval(tmin: float, tmax: float) -> float:
-    """return a random time interval between max and min"""
-    return random.uniform(tmin, tmax)
-
-
-def blinker(N: int, led: Pin) -> None:
-    # %% let user know game started / is over
-
-    for _ in range(N):
+def blinker(flash_count: int, led: Pin) -> None:
+    """Blink the LED flash_count times."""
+    for _ in range(flash_count):
         led.high()
         time.sleep(0.1)
         led.low()
         time.sleep(0.1)
-
 
 def write_json(json_filename: str, data: dict) -> None:
     """Writes data to a JSON file.
@@ -67,84 +59,68 @@ def write_json(json_filename: str, data: dict) -> None:
     data: dict
         Dictionary data to write to the file.
     """
-
     with open(json_filename, "w") as f:
         json.dump(data, f)
 
+def scorer(response_times: list[int | None]) -> None:
+    """Calculate and print the score and statistics from response times."""
+    missed_responses = response_times.count(None)
+    print(f"You missed the light {missed_responses} / {len(response_times)} times")
 
-def scorer(t: list[int | None]) -> None:
-    # %% collate results
-    misses = t.count(None)
-    print(f"You missed the light {misses} / {len(t)} times")
-
-    t_good = [x for x in t if x is not None]
-
+    t_good = [time for time in response_times if time is not None]
     print(t_good)
 
-    # add key, value to this dict to store the minimum, maximum, average response time
-    # and score (non-misses / total flashes) i.e. the score a floating point number
-    # is in range [0..1]
-    
     if t_good:
-        avg_time = sum(t_good)/len(t_good)
-        min_time = min(t_good)
-        max_time = max(t_good)
+        max_response_time = max(t_good)
+        min_response_time = min(t_good)
+        avg_response_time = sum(t_good) / len(t_good)
     else:
-        avg_time = min_time = max_time = None
-        
-    
-    print(f"Response Times: {t_good}")
-    print(f"Avg: {avg_time}, min: {min_time}, max: {max_time}")
-        
-    data = {
-        "average_time" : avg_time,
-        "min_time" : min_time,
-        "max_time" : max_time,
-        "misses" : misses,
-        "score" : (N - misses) / N 
-        }
+        avg_response_time = min_response_time = max_response_time = None
 
-    # %% make dynamic filename and write JSON
+    print(f"Response Times: {t_good}, Avg: {avg_response_time}, Min: {min_response_time}, Max: {max_response_time}")
 
-    now: tuple[int] = time.localtime()
+    metrics = {
+        "average_response_time": avg_response_time,
+        "min_response_time": min_response_time,
+        "max_response_time": max_response_time,
+        "missed_responses": missed_responses,
+        "success_rate": (total_flashes - missed_responses) / total_flashes
+    }
 
+    now = time.localtime()
     now_str = "-".join(map(str, now[:3])) + "T" + "_".join(map(str, now[3:6]))
     filename = f"score-{now_str}.json"
 
-    print("write", filename)
+    print("Writing", filename)
 
-    
-    response = requests.post(url + f"{filename}", data = json.dumps(data))
+    response = requests.post(url + f"{filename}", data=json.dumps(metrics))
     print(response.text)
 
-#if __name__ == "__main__":
-    # using "if __name__" allows us to reuse functions in other script files
-
-connect_wifi(SSID)
+# Connect to Wi-Fi
+connect_to_wifi(SSID)
 led = Pin("LED", Pin.OUT)
 button = Pin(15, Pin.IN, Pin.PULL_UP)
 
-t: list[int | None] = []
+response_times: list[int | None] = []
 
 blinker(3, led)
 
-
-for i in range(N):
+for _ in range(total_flashes):
     time.sleep(random_time_interval(0.5, 5.0))
 
     led.high()
 
     tic = time.ticks_ms()
-    t0 = None
-    while time.ticks_diff(time.ticks_ms(), tic) < on_ms:
+    response_time = None
+    while time.ticks_diff(time.ticks_ms(), tic) < flash_duration_ms:
         if button.value() == 0:
-            t0 = time.ticks_diff(time.ticks_ms(), tic)
+            response_time = time.ticks_diff(time.ticks_ms(), tic)
             led.low()
             break
-    t.append(t0)
+    response_times.append(response_time)
 
     led.low()
 
 blinker(5, led)
 
-scorer(t)
+scorer(response_times)

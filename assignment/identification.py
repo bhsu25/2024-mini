@@ -77,16 +77,20 @@ def parse_and_display_scores(user_email):
     all_data = ref.get()
 
     if isinstance(all_data, dict):
+        found_scores = False
         for key, value in all_data.items():
             if key.startswith("score") and isinstance(value, dict):
                 for inner_key, score_entry in value.items():
                     if isinstance(score_entry, dict) and score_entry.get('email') == user_email:
-                        print(f"Score data for {user_email}:")
+                        print(f"Score data for {user_email} in {key}:")
                         print(json.dumps(score_entry))
-                        return
-        print(f"No scores found for {user_email}")
+                        found_scores = True
+        
+        if not found_scores:
+            print(f"No scores found for {user_email}")
     else:
         print("No scores data found or data is not in the expected format.")
+
 
 def main():
     print("Sign in as Trieu")

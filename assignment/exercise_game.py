@@ -44,7 +44,7 @@ def connect_to_wifi(ssid):
         print('Not connected to Wi-Fi.')
         return False
 
-total_flashes: int = 2
+total_flashes: int = 5
 flash_duration_ms = 500
 
 def random_time_interval(min_time: float, max_time: float) -> float:
